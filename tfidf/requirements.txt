@@ -1,7 +1,13 @@
-# TF-IDF Implementation
+# TF-IDF Implementation Requirements
 # This project uses only Python 3 standard library
 # No external dependencies required
 
-# Optional: If you want to use the MRJob version (tfidf.py)
-# Uncomment the line below:
-# mrjob>=0.7.0
+# All required modules:
+# - re (regular expressions)
+# - math (mathematical functions)  
+# - os (operating system interface)
+# - collections (specialized container datatypes)
+# - sys (system-specific parameters)
+# - importlib (import utilities)
+
+# These are all built into Python 3.6+ - no pip install needed!

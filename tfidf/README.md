@@ -12,24 +12,25 @@ tfidf/
 │   ├── paper3_data_science.txt         # Data Science Business paper
 │   ├── paper4_artificial_intelligence.txt  # AI Ethics paper
 │   └── paper5_computer_vision.txt      # Computer Vision paper
-├── tfidf_english.py                    # 🎯 Main TF-IDF implementation (RECOMMENDED)
-├── run_analysis.py                     # 📊 Complete demonstration script
-├── tfidf.py                           # MRJob distributed version (optional)
-├── requirements.txt                    # Dependencies (none required for main script)
+├── run_analysis.py                     # 🎯 Complete TF-IDF implementation
+├── requirements.txt                    # Dependencies (none required)
+├── deploy.sh                          # One-click deployment script
 └── README.md                          # This file
 ```
 
 ## 🚀 Quick Start
 
-### Option 1: Direct Execution (Recommended)
-```bash
-python3 tfidf_english.py
-```
-
-### Option 2: Full Demonstration
+### Single Command Execution
 ```bash
 python3 run_analysis.py
 ```
+
+This single script provides:
+- Complete project demonstration
+- System environment verification
+- Document collection analysis  
+- Full TF-IDF algorithm implementation
+- Detailed query results with TF-IDF scores
 
 ## 📋 System Requirements
 

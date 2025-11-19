@@ -28,7 +28,7 @@ fi
 # Check project structure
 echo ""
 echo "📁 Verifying project structure..."
-required_files=("tfidf_english.py" "run_analysis.py" "README.md" "documents")
+required_files=("run_analysis.py" "README.md" "documents" "deploy.sh")
 missing_files=()
 
 for file in "${required_files[@]}"; do
@@ -97,7 +97,7 @@ fi
 # Final verification
 echo ""
 echo "🎯 Final verification..."
-if python3 tfidf_english.py > /dev/null 2>&1; then
+if python3 run_analysis.py > /dev/null 2>&1; then
     echo "✅ Main script executes successfully"
 else
     echo "⚠️  Main script execution completed (check output manually)"
@@ -107,10 +107,7 @@ echo ""
 echo "🎉 DEPLOYMENT COMPLETE!"
 echo "======================="
 echo ""
-echo "💡 To run the TF-IDF analysis:"
-echo "   python3 tfidf_english.py"
-echo ""
-echo "💡 To run full demonstration:"
+echo "💡 To run the complete TF-IDF analysis:"
 echo "   python3 run_analysis.py"
 echo ""
 echo "📖 For more information:"
