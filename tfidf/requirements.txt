@@ -1,0 +1,7 @@
+# TF-IDF Implementation
+# This project uses only Python 3 standard library
+# No external dependencies required
+
+# Optional: If you want to use the MRJob version (tfidf.py)
+# Uncomment the line below:
+# mrjob>=0.7.0
