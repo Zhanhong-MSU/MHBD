@@ -1,0 +1,109 @@
+# VS Code
+.vscode/
+.vscode-server/
+*.code-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+
+# MRJob temporary files
+/tmp/
+*.mrjob.*
+.mrjob.conf
+mrjob-*
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# Test outputs
+*.log
+*.tmp
+results*.txt
+output/
+*_output.txt
+
+# 20 Newsgroups dataset
+tfidf/documents/
+tfidf/newsgroups_input.txt
+
+# Temporary files
+*.swp
+*.swo
+*.bak
+*.backup
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# Pyre type checker
+.pyre/
