@@ -32,12 +32,27 @@ python3 run_analysis.py full
 
 ```
 tfidf/
-├── run_analysis.py              # Main program
-├── documents/
+├── run_analysis.py              # Main program (submission file)
+├── README.md                    # This file
+├── requirements.txt             # No dependencies
+├── documents/                   # Dataset folder
 │   ├── newsgroups_sample/       # Sample dataset (10 documents)
 │   └── newsgroups_full/         # Full dataset (17,901 documents)
-└── README.md                    # This file
+├── scripts/                     # Utility scripts (optional)
+│   ├── README.md
+│   └── download_full_newsgroups.py
+└── tests/                       # Test files (optional)
+    ├── README.md
+    ├── test_both_datasets.py
+    └── test_optimized.py
 ```
+
+**For assignment submission, you only need:**
+- `run_analysis.py` (main program)
+- `documents/newsgroups_sample/` (10 documents)
+- `README.md` (this file)
+
+The `scripts/` and `tests/` folders are optional development tools.
 
 ## Author
 

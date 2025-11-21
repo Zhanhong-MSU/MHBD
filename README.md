@@ -89,18 +89,36 @@ The program demonstrates TF-IDF algorithm by:
 ## 📁 Project Structure
 
 ```
-MHBG-1/
-├── README.md                    # This file
-├── homework_1.pdf              # Original assignment (optional)
-├── requirements.txt            # Empty (for compatibility)
-└── tfidf/                      # ⭐ SUBMIT THIS FOLDER
-    ├── run_analysis.py         # Main TF-IDF implementation
-    ├── README.md               # Detailed documentation
-    ├── requirements.txt        # No dependencies
-    └── documents/
-        ├── newsgroups_sample/  # 10 sample docs (21KB)
-        └── newsgroups_full/    # 17,901 docs (65MB, optional)
+MHBG-1/                              # Project root
+├── README.md                        # This file (project overview)
+├── homework_1.pdf                  # Original assignment (optional)
+└── tfidf/                          # ⭐ SUBMIT THIS FOLDER
+    ├── run_analysis.py             # Main TF-IDF program
+    ├── README.md                   # Usage instructions
+    ├── requirements.txt            # No dependencies (standard library only)
+    ├── documents/                  # Dataset folder
+    │   ├── newsgroups_sample/      # 10 sample docs (required)
+    │   └── newsgroups_full/        # 17,901 docs (optional)
+    ├── scripts/                    # Utility scripts (optional)
+    │   ├── README.md
+    │   └── download_full_newsgroups.py
+    └── tests/                      # Test files (optional)
+        ├── README.md
+        ├── test_both_datasets.py
+        └── test_optimized.py
 ```
+
+### What to Submit
+
+**Core files (required)**:
+- `tfidf/run_analysis.py` - Main program
+- `tfidf/documents/newsgroups_sample/` - 10 sample documents
+- `tfidf/README.md` - Instructions
+
+**Optional files** (for reference, not required):
+- `tfidf/scripts/` - Dataset download tools
+- `tfidf/tests/` - Performance testing scripts
+- `tfidf/documents/newsgroups_full/` - Full 17,901 documents
 
 ## 🎯 Algorithm Implementation
 

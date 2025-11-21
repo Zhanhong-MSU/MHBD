@@ -66,10 +66,6 @@ results*.txt
 output/
 *_output.txt
 
-# 20 Newsgroups dataset
-tfidf/documents/
-tfidf/newsgroups_input.txt
-
 # Temporary files
 *.swp
 *.swo
