@@ -83,6 +83,23 @@ python3 tests/benchmark_parallel.py full
 python3 scripts/demo_cpu_detection.py
 ```
 
+## 📦 Managing the Full Dataset
+
+To reduce project size for submission or email, you can delete the full dataset and restore it later using the provided script.
+
+**Delete Full Dataset (to save space)**
+```bash
+cd tfidf
+python3 manage_dataset.py delete
+```
+
+**Download & Restore Full Dataset**
+```bash
+cd tfidf
+python3 manage_dataset.py download
+```
+*Note: This downloads the original 20 Newsgroups dataset (~14MB compressed) and reconstructs the file structure.*
+
 ## ✨ Features
 
 ### Core Features (Both Versions)

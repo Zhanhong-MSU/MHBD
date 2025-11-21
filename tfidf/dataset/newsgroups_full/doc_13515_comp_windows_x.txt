@@ -1,2 +1,0 @@
-VirtualGrabKeys is not an OW resource. It belongs to
-olvwm(1).
