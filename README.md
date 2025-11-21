@@ -36,12 +36,19 @@ Runs a set of predefined queries to verify functionality:
 python3 run.py
 ```
 
-### 3. Use Full Dataset
+### 3. Run in Parallel Mode (Multi-core)
+To speed up processing (especially for the full dataset), use the `-p` or `--parallel` flag. This uses `mrjob`'s local runner with multiple subprocesses.
+
+```bash
+python3 run.py -p sample "computer science"
+```
+
+### 4. Use Full Dataset
 To download and run on the full 20 Newsgroups dataset:
 ```bash
 # Download data
 python3 manage_dataset.py download
 
-# Run analysis
-python3 run.py full "your search query"
+# Run analysis (recommended to use parallel mode for full dataset)
+python3 run.py full "your search query" -p
 ```

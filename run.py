@@ -14,6 +14,7 @@ import sys
 import time
 import shutil
 import argparse
+import multiprocessing
 from collections import defaultdict
 from tfidf import MRTFIDF  # Import the MRJob class
 
@@ -60,7 +61,7 @@ def prepare_input_file(documents_dir, output_file):
     print(f"✅ Prepared {count} documents in {output_file}")
     return count
 
-def run_mr_analysis(dataset='sample', search_query=None):
+def run_mr_analysis(dataset='sample', search_query=None, parallel=False):
     start_time = time.time()
     
     # 1. Setup Paths
@@ -86,8 +87,18 @@ def run_mr_analysis(dataset='sample', search_query=None):
     print(f"⚙️  Step 2: Running MapReduce Job (mrjob)...")
     mr_start_time = time.time()
     
+    # Configure job arguments
+    job_args = [input_file, f'--total-docs={total_docs}']
+    
+    if parallel:
+        num_cores = multiprocessing.cpu_count()
+        print(f"   🚀 Running in PARALLEL mode with {num_cores} cores (local runner)")
+        job_args.extend(['-r', 'local', f'--num-cores={num_cores}'])
+    else:
+        print("   🐢 Running in SINGLE-CORE mode (inline runner)")
+    
     # We run the job programmatically
-    mr_job = MRTFIDF(args=[input_file, f'--total-docs={total_docs}'])
+    mr_job = MRTFIDF(args=job_args)
     
     # Store results: doc_vectors[filename] = {word: score}
     doc_vectors = defaultdict(dict)
@@ -189,6 +200,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='TF-IDF MapReduce Analysis')
     parser.add_argument('dataset', nargs='?', default='sample', choices=['sample', 'full'], help='Dataset to use (sample or full)')
     parser.add_argument('query', nargs='*', help='Search query words (optional)')
+    parser.add_argument('-p', '--parallel', action='store_true', help='Run in parallel mode using all available CPU cores')
     
     args = parser.parse_args()
     
@@ -201,4 +213,4 @@ if __name__ == "__main__":
         print(f"Query: {search_query}")
     print("="*80)
     
-    run_mr_analysis(args.dataset, search_query)
+    run_mr_analysis(args.dataset, search_query, args.parallel)
