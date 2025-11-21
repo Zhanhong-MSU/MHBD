@@ -198,13 +198,22 @@ def search_documents(documents, query, doc_names, num_processes=None):
     
     print(f"🔧 Using {num_processes} CPU cores for parallel processing")
     
+    # Calculate optimal chunk size for better load balancing
+    # For large datasets: make chunks small enough to distribute evenly across cores
+    # Rule: at least 4 chunks per core to ensure good distribution
+    total_items = len(documents)
+    min_chunks = num_processes * 4
+    chunksize = max(1, total_items // min_chunks)
+    
+    print(f"🔧 Chunk size: {chunksize} (optimized for {num_processes} cores)")
+    
     # Step 1: Tokenize all documents in parallel
     print(f"⚙️  Step 1/3: Tokenizing {len(documents)} documents in parallel...")
     start_time = time.time()
     
     with Pool(processes=num_processes) as pool:
         doc_args = [(doc_content, doc_name) for doc_content, doc_name in zip(documents, doc_names)]
-        results = pool.map(process_document, doc_args)
+        results = pool.map(process_document, doc_args, chunksize=chunksize)
     
     # Extract tokenized documents
     doc_words_dict = {doc_name: words for doc_name, words in results}
@@ -231,7 +240,7 @@ def search_documents(documents, query, doc_names, num_processes=None):
     with Pool(processes=num_processes) as pool:
         score_args = [(words, query_words, idf, doc_name) 
                       for words, doc_name in zip(doc_words, doc_names)]
-        doc_scores = pool.map(calculate_document_score, score_args)
+        doc_scores = pool.map(calculate_document_score, score_args, chunksize=chunksize)
     
     score_time = time.time() - start_time
     print(f"   ✅ Scoring complete in {score_time:.2f} seconds")
