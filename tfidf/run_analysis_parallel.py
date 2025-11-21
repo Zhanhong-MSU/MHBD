@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-TF-IDF Analysis - Multi-Process Parallel Implementation
+TF-IDF Analysis - Optimized Multi-Process Parallel Implementation
 Document Collection Analysis using TF-IDF Algorithm with automatic CPU core detection
 Standalone implementation with Python standard library only (Python 3.6+)
 
 Features:
 - Automatic CPU core detection and adaptation
-- Parallel document processing using multiprocessing
+- Parallel file reading and tokenization (I/O + CPU bound)
+- Optimized IDF calculation (O(N) instead of O(N^2))
+- Shared memory for large dictionaries to reduce IPC overhead
 - Dynamic workload distribution
 - Progress tracking for large datasets
 
-Author: Student Submission
+Author: GitHub Copilot (Refactored)
 Date: November 2025
 """
 
@@ -19,108 +21,98 @@ import sys
 import re
 import math
 import time
-from collections import defaultdict, Counter
+import random
+from collections import Counter, defaultdict
 from multiprocessing import Pool, cpu_count
+
+# Global variables for worker processes
+# These are initialized once per process to avoid serialization overhead
+shared_idf = None
+shared_query_words = None
+
+def init_worker(idf, query_words):
+    """
+    Initialize worker process with shared read-only data.
+    This runs once when the pool creates the worker.
+    """
+    global shared_idf, shared_query_words
+    shared_idf = idf
+    shared_query_words = query_words
 
 def clean_text(text):
     """
     Clean and tokenize text into words.
-    
-    Args:
-        text (str): Input text to be cleaned
-        
-    Returns:
-        list: List of lowercase words (alphabetic characters only)
     """
     return re.findall(r'\b[a-zA-Z]+\b', text.lower())
 
-def calculate_tf(word_list):
+def process_document_file(filepath):
     """
-    Calculate Term Frequency (TF) for each word in the document.
-    TF = (Number of times term appears in document) / (Total number of terms in document)
+    Worker function: Read file, clean text, and count terms.
     
     Args:
-        word_list (list): List of words in the document
+        filepath (str): Path to the file to process
         
     Returns:
-        dict: Dictionary mapping each word to its TF value
+        tuple: (filename, term_counts, total_words, content_preview)
+               term_counts is a Counter object (sparse vector)
     """
-    word_count = len(word_list)
-    tf_dict = {}
-    counter = Counter(word_list)
-    
-    for word, count in counter.items():
-        tf_dict[word] = count / word_count
-    
-    return tf_dict
+    try:
+        filename = os.path.basename(filepath)
+        # Use errors='replace' to handle potential non-utf-8 bytes in dataset
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read().strip()
+        
+        if not content:
+            return (filename, Counter(), 0, "")
+            
+        words = clean_text(content)
+        word_count = len(words)
+        term_counts = Counter(words)
+        
+        # Keep a short preview for display (first 100 chars)
+        preview = content[:100].replace('\n', ' ')
+        
+        return (filename, term_counts, word_count, preview)
+    except Exception as e:
+        # Return empty result on error
+        return (os.path.basename(filepath), Counter(), 0, "")
 
-def process_document(args):
+def calculate_document_score_worker(args):
     """
-    Process a single document (used for parallel processing).
-    This function is designed to be run in parallel by multiprocessing.Pool.
+    Worker function: Calculate TF-IDF score for a single document.
+    Uses shared_idf and shared_query_words from global scope.
     
     Args:
-        args (tuple): (doc_content, doc_name) tuple
+        args (tuple): (filename, term_counts, total_words)
         
     Returns:
-        tuple: (doc_name, word_list) where word_list is the tokenized document
+        tuple: (filename, score, matching_words)
     """
-    doc_content, doc_name = args
-    words = clean_text(doc_content)
-    return (doc_name, words)
-
-def calculate_idf(documents):
-    """
-    Calculate Inverse Document Frequency (IDF) for all words across documents.
-    IDF = log(Total number of documents / Number of documents containing the term)
+    filename, term_counts, total_words = args
+    global shared_idf, shared_query_words
     
-    Args:
-        documents (list): List of tokenized documents (each document is a list of words)
-        
-    Returns:
-        dict: Dictionary mapping each word to its IDF value
-    """
-    total_docs = len(documents)
-    idf_dict = {}
-    all_words = set(word for doc in documents for word in doc)
+    if total_words == 0:
+        return (filename, 0.0, [])
     
-    for word in all_words:
-        docs_containing_word = sum(1 for doc in documents if word in doc)
-        idf_dict[word] = math.log(total_docs / docs_containing_word)
-    
-    return idf_dict
-
-def calculate_document_score(args):
-    """
-    Calculate TF-IDF score for a single document against a query (parallel processing).
-    
-    Args:
-        args (tuple): (words, query_words, idf, doc_name) tuple
-        
-    Returns:
-        tuple: (doc_name, score, matching_words) where matching_words contains
-               (word, tf, idf, tfidf) tuples for query terms
-    """
-    words, query_words, idf, doc_name = args
-    
-    tf = calculate_tf(words)
-    
-    # Calculate relevance score for query
-    score = 0
+    score = 0.0
     matching_words = []
-    for word in query_words:
-        tf_val = tf.get(word, 0)
-        idf_val = idf.get(word, 0)
-        tfidf_score = tf_val * idf_val
-        score += tfidf_score
-        
-        if tf_val > 0:
-            matching_words.append((word, tf_val, idf_val, tfidf_score))
     
-    if len(query_words) > 0:
-        score /= len(query_words)  # Average score
+    # Only iterate through query words (efficient for sparse vectors)
+    for q_word in shared_query_words:
+        # TF = count / total_words
+        count = term_counts.get(q_word, 0)
+        if count > 0:
+            tf_val = count / total_words
+            idf_val = shared_idf.get(q_word, 0.0)
+            tfidf_score = tf_val * idf_val
+            
+            score += tfidf_score
+            matching_words.append((q_word, tf_val, idf_val, tfidf_score))
     
-    return (doc_name, score, matching_words)
+    if shared_query_words:
+        score /= len(shared_query_words)  # Average score
+    
+    return (filename, score, matching_words)
 
 def print_table_header():
     """Print formatted table header for query results summary."""
@@ -130,24 +122,11 @@ def print_table_header():
     print("=" * 110)
 
 def print_table_row(rank, doc_name, query, score, top_terms):
-    """
-    Print a formatted table row with query results.
-    
-    Args:
-        rank (int): Result ranking position
-        doc_name (str): Document filename
-        query (str): Query string
-        score (float): TF-IDF relevance score
-        top_terms (str): Top matching terms
-    """
-    # Clean document name (remove .txt extension and shorten for display)
+    """Print a formatted table row with query results."""
     doc_clean = doc_name.replace('.txt', '').replace('_', ' ').title()
     doc_short = doc_clean[:37] + "..." if len(doc_clean) > 40 else doc_clean
-    
-    # Shorten query and top terms for better table fit
     query_short = query[:32] + "..." if len(query) > 35 else query
     top_terms_short = top_terms[:15] + "..." if len(top_terms) > 18 else top_terms
-    
     print(f"{rank:<4} {doc_short:<40} {query_short:<35} {score:<8.4f} {top_terms_short:<18}")
 
 def print_performance_table_header():
@@ -158,119 +137,21 @@ def print_performance_table_header():
     print("=" * 80)
 
 def get_performance_rating(avg_score):
-    """
-    Calculate star rating based on average TF-IDF score.
-    
-    Args:
-        avg_score (float): Average TF-IDF score for a document
-        
-    Returns:
-        str: Star rating (⭐ to ⭐⭐⭐⭐⭐)
-    """
-    if avg_score >= 0.020:
-        return "⭐⭐⭐⭐⭐"
-    elif avg_score >= 0.015:
-        return "⭐⭐⭐⭐"
-    elif avg_score >= 0.010:
-        return "⭐⭐⭐"
-    elif avg_score >= 0.005:
-        return "⭐⭐"
-    else:
-        return "⭐"
-
-def search_documents(documents, query, doc_names, num_processes=None):
-    """
-    Search and rank documents using TF-IDF algorithm with parallel processing.
-    
-    Args:
-        documents (list): List of document contents (strings)
-        query (str): Search query string
-        doc_names (list): List of document filenames
-        num_processes (int): Number of processes to use (default: auto-detect)
-        
-    Returns:
-        list: Sorted list of tuples (doc_name, score, matching_words)
-              where matching_words contains (word, tf, idf, tfidf) tuples
-    """
-    # Auto-detect number of CPU cores if not specified
-    if num_processes is None:
-        num_processes = cpu_count()
-    
-    print(f"🔧 Using {num_processes} CPU cores for parallel processing")
-    
-    # Calculate optimal chunk size for better load balancing
-    # For large datasets: make chunks small enough to distribute evenly across cores
-    # Rule: at least 4 chunks per core to ensure good distribution
-    total_items = len(documents)
-    min_chunks = num_processes * 4
-    chunksize = max(1, total_items // min_chunks)
-    
-    print(f"🔧 Chunk size: {chunksize} (optimized for {num_processes} cores)")
-    
-    # Step 1: Tokenize all documents in parallel
-    print(f"⚙️  Step 1/3: Tokenizing {len(documents)} documents in parallel...")
-    start_time = time.time()
-    
-    with Pool(processes=num_processes) as pool:
-        doc_args = [(doc_content, doc_name) for doc_content, doc_name in zip(documents, doc_names)]
-        results = pool.map(process_document, doc_args, chunksize=chunksize)
-    
-    # Extract tokenized documents
-    doc_words_dict = {doc_name: words for doc_name, words in results}
-    doc_words = [doc_words_dict[name] for name in doc_names]
-    
-    tokenize_time = time.time() - start_time
-    print(f"   ✅ Tokenization complete in {tokenize_time:.2f} seconds")
-    
-    # Step 2: Calculate IDF (must be done sequentially as it needs all documents)
-    print(f"⚙️  Step 2/3: Calculating IDF for vocabulary...")
-    start_time = time.time()
-    
-    idf = calculate_idf(doc_words)
-    
-    idf_time = time.time() - start_time
-    print(f"   ✅ IDF calculation complete in {idf_time:.2f} seconds ({len(idf)} unique words)")
-    
-    # Step 3: Calculate TF-IDF scores for each document in parallel
-    print(f"⚙️  Step 3/3: Calculating TF-IDF scores in parallel...")
-    start_time = time.time()
-    
-    query_words = clean_text(query)
-    
-    with Pool(processes=num_processes) as pool:
-        score_args = [(words, query_words, idf, doc_name) 
-                      for words, doc_name in zip(doc_words, doc_names)]
-        doc_scores = pool.map(calculate_document_score, score_args, chunksize=chunksize)
-    
-    score_time = time.time() - start_time
-    print(f"   ✅ Scoring complete in {score_time:.2f} seconds")
-    
-    # Sort by score (descending)
-    doc_scores.sort(key=lambda x: x[1], reverse=True)
-    return doc_scores
+    """Calculate star rating based on average TF-IDF score."""
+    if avg_score >= 0.020: return "⭐⭐⭐⭐⭐"
+    elif avg_score >= 0.015: return "⭐⭐⭐⭐"
+    elif avg_score >= 0.010: return "⭐⭐⭐"
+    elif avg_score >= 0.005: return "⭐⭐"
+    else: return "⭐"
 
 def run_tfidf_analysis(dataset='sample', num_processes=None, sample_ratio=1.0):
     """
     Execute TF-IDF analysis on document collection with parallel processing.
-    
-    Args:
-        dataset (str): Dataset to analyze - 'sample' (10 docs) or 'full' (17,901 docs)
-        num_processes (int): Number of processes to use (default: auto-detect CPU cores)
-        sample_ratio (float): Ratio of documents to process (0.0-1.0). 
-                             E.g., 0.5 = half, 0.25 = quarter, 0.125 = 1/8
-        
-    Returns:
-        bool: True if analysis completed successfully, False otherwise
     """
-    # Auto-detect CPU cores if not specified
     if num_processes is None:
         num_processes = cpu_count()
     
-    # Initialize document storage
-    documents = []
-    doc_names = []
-    
-    # Choose dataset directory based on parameter
+    # 1. Identify Files
     if dataset == 'full':
         documents_dir = 'dataset/newsgroups_full'
     else:
@@ -280,97 +161,92 @@ def run_tfidf_analysis(dataset='sample', num_processes=None, sample_ratio=1.0):
         print(f"❌ Error: {documents_dir} directory not found")
         return False
     
-    # Read all text files in the documents directory
-    print(f"📂 Loading documents from {documents_dir}...")
-    start_time = time.time()
-    
-    all_filenames = []
+    print(f"📂 Scanning directory {documents_dir}...")
+    all_filepaths = []
     for filename in sorted(os.listdir(documents_dir)):
         if filename.endswith('.txt'):
-            all_filenames.append(filename)
+            all_filepaths.append(os.path.join(documents_dir, filename))
     
-    # Apply sampling if ratio < 1.0
+    # Apply sampling
     if sample_ratio < 1.0:
-        import random
-        random.seed(42)  # Fixed seed for reproducibility
-        num_to_sample = max(1, int(len(all_filenames) * sample_ratio))
-        all_filenames = random.sample(all_filenames, num_to_sample)
-        all_filenames.sort()  # Keep sorted for consistent output
-        print(f"📊 Sampling {sample_ratio*100:.1f}% of data: {len(all_filenames)} documents selected")
+        random.seed(42)
+        num_to_sample = max(1, int(len(all_filepaths) * sample_ratio))
+        all_filepaths = random.sample(all_filepaths, num_to_sample)
+        all_filepaths.sort()
+        print(f"📊 Sampling {sample_ratio*100:.1f}% of data: {len(all_filepaths)} documents selected")
     
-    for filename in all_filenames:
-        filepath = os.path.join(documents_dir, filename)
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                content = f.read().strip()
-                if content:  # Only add non-empty files
-                    doc_names.append(filename)
-                    documents.append(content)
-        except Exception as e:
-            print(f"❌ Error reading {filename}: {e}")
-            return False
+    if not all_filepaths:
+        print("❌ No documents found")
+        return False
+
+    # Calculate chunksize
+    # For I/O bound tasks (reading files), smaller chunks might be better to keep CPUs busy
+    # but for CPU bound (tokenizing), larger chunks reduce overhead.
+    # We use a balanced approach.
+    chunksize = max(1, len(all_filepaths) // (num_processes * 4))
+    print(f"🔧 Using {num_processes} CPU cores with chunksize={chunksize}")
+
+    # 2. Parallel Processing: Read & Tokenize
+    print(f"⚙️  Step 1/3: Reading and tokenizing {len(all_filepaths)} documents in parallel...")
+    start_time = time.time()
+    
+    # We use a Pool to process files in parallel.
+    # This moves the "Loading documents" phase from serial (main process) to parallel (workers).
+    processed_docs = []
+    with Pool(processes=num_processes) as pool:
+        # map returns results in order
+        results = pool.map(process_document_file, all_filepaths, chunksize=chunksize)
+        
+        # Filter out failed reads (empty content)
+        for res in results:
+            if res[2] > 0: # word_count > 0
+                processed_docs.append(res)
     
     load_time = time.time() - start_time
-    print(f"✅ Loaded {len(documents)} documents in {load_time:.2f} seconds")
+    print(f"   ✅ Tokenization complete in {load_time:.2f} seconds")
+    print(f"   ✅ Successfully processed {len(processed_docs)} documents")
+
+    # Unpack results for next steps
+    # processed_docs is list of (filename, term_counts, word_count, preview)
     
-    if not documents:
-        print("❌ No documents found in the documents directory")
-        return False
-    
-    print("\n📊 TF-IDF Algorithm Results (Parallel Processing)")
-    print("=" * 100)
-    
-    # Display document overview table
+    # Display Document Overview (First 10)
     print("\n📋 DOCUMENT OVERVIEW")
     print("-" * 80)
-    print(f"{'#':<3} {'Document':<40} {'Size':<12} {'Topic':<25}")
+    print(f"{'#':<3} {'Document':<40} {'Size':<12} {'Preview':<25}")
     print("-" * 80)
     
-    # Topic mapping for document categorization
-    topics = {
-        "paper1_machine_learning.txt": "Healthcare ML",
-        "paper2_deep_learning.txt": "NLP & Deep Learning", 
-        "paper3_data_science.txt": "Business Analytics",
-        "paper4_artificial_intelligence.txt": "AI Ethics",
-        "paper5_computer_vision.txt": "Computer Vision & Robotics",
-        # 20 Newsgroups dataset categories
-        "doc1_comp_graphics.txt": "Computer Graphics",
-        "doc2_comp_graphics.txt": "Computer Graphics",
-        "doc3_sci_med.txt": "Medical Science",
-        "doc4_talk_politics_misc.txt": "Politics",
-        "doc5_sci_med.txt": "Medical Science",
-        "doc6_talk_politics_misc.txt": "Politics",
-        "doc7_alt_atheism.txt": "Religion/Atheism",
-        "doc8_sci_med.txt": "Medical Science",
-        "doc9_comp_graphics.txt": "Computer Graphics",
-        "doc10_rec_sport_baseball.txt": "Sports/Baseball"
-    }
-    
-    for i, (name, content) in enumerate(zip(doc_names, documents), 1):
-        word_count = len(content.split())
-        doc_clean = name.replace('.txt', '').replace('_', ' ').title()
+    for i, (fname, _, wcount, preview) in enumerate(processed_docs[:10], 1):
+        doc_clean = fname.replace('.txt', '').replace('_', ' ').title()
         doc_short = doc_clean[:37] + "..." if len(doc_clean) > 40 else doc_clean
-        topic = topics.get(name, "General")
-        # Only show first 10 for large datasets
-        if i <= 10 or dataset == 'sample':
-            print(f"{i:<3} {doc_short:<40} {word_count:>4} words   {topic:<25}")
+        print(f"{i:<3} {doc_short:<40} {wcount:>4} words   {preview[:25]}...")
     
-    if len(documents) > 10:
-        print(f"... and {len(documents) - 10} more documents")
-    
+    if len(processed_docs) > 10:
+        print(f"... and {len(processed_docs) - 10} more documents")
     print("-" * 80)
-    print()
+
+    # 3. Calculate IDF (Sequential but Optimized)
+    print(f"\n⚙️  Step 2/3: Calculating IDF for vocabulary...")
+    start_time = time.time()
     
-    # Display preview of document contents (only for small datasets)
-    if dataset == 'sample':
-        print(f"📄 Document Content Preview:")
-        for i, (name, content) in enumerate(zip(doc_names, documents), 1):
-            # Display first 80 characters of each document
-            preview = content[:80] + "..." if len(content) > 80 else content
-            print(f"{i}. {name}: {preview}")
-        print()
+    # Optimized IDF calculation:
+    # Iterate over the Counter objects directly.
+    # This avoids creating a massive list of all words or iterating text repeatedly.
+    doc_freq = Counter()
+    for _, counts, _, _ in processed_docs:
+        # counts.keys() gives unique words in the doc
+        doc_freq.update(counts.keys())
     
-    # Define test queries for newsgroups dataset
+    total_docs = len(processed_docs)
+    idf_dict = {}
+    for word, freq in doc_freq.items():
+        idf_dict[word] = math.log(total_docs / freq)
+        
+    idf_time = time.time() - start_time
+    print(f"   ✅ IDF calculation complete in {idf_time:.2f} seconds ({len(idf_dict)} unique words)")
+
+    # 4. Parallel Scoring
+    print(f"⚙️  Step 3/3: Calculating TF-IDF scores in parallel...")
+    
     queries = [
         "computer graphics image display",
         "medical doctor patient health",
@@ -382,247 +258,108 @@ def run_tfidf_analysis(dataset='sample', num_processes=None, sample_ratio=1.0):
         "treatment disease clinical"
     ]
     
-    # Store results for summary table
     all_results = []
+    total_query_time = 0
     
-    # Execute TF-IDF analysis for each query
-    print("🔍 DETAILED QUERY ANALYSIS (Parallel Processing)")
+    print("🔍 DETAILED QUERY ANALYSIS")
     print("=" * 100)
     
-    total_query_time = 0
+    # Prepare arguments for scoring
+    # We strip the preview string to save memory during transfer
+    score_args = [(fname, counts, wcount) for fname, counts, wcount, _ in processed_docs]
     
     for query_num, query in enumerate(queries, 1):
         print(f"\n🔎 Query {query_num}/{len(queries)}: '{query}'")
         print("-" * 50)
         
+        query_words = clean_text(query)
         query_start = time.time()
-        results = search_documents(documents, query, doc_names, num_processes)
+        
+        # Create a new pool for scoring, initializing workers with the IDF dict and Query
+        # This is crucial: passing idf_dict (potentially large) once per process
+        # instead of once per task drastically reduces IPC overhead.
+        with Pool(processes=num_processes, initializer=init_worker, initargs=(idf_dict, query_words)) as pool:
+            doc_scores = pool.map(calculate_document_score_worker, score_args, chunksize=chunksize)
+        
+        # Sort results
+        doc_scores.sort(key=lambda x: x[1], reverse=True)
+        
         query_time = time.time() - query_start
         total_query_time += query_time
-        
         print(f"⏱️  Query processed in {query_time:.2f} seconds")
-        print(f"\nTop 5 Results:")
         
-        for rank, (doc_name, score, matching_words) in enumerate(results[:5], 1):
+        # Display top results
+        print(f"\nTop 5 Results:")
+        for rank, (doc_name, score, matching_words) in enumerate(doc_scores[:5], 1):
             print(f"{rank}. {doc_name} (Score: {score:.4f})")
-            
-            if matching_words and rank <= 3:  # Only show details for top 3
+            if matching_words and rank <= 3:
                 print("   Matching terms:")
-                for word, tf_val, idf_val, tfidf in matching_words[:5]:  # Show top 5 terms
+                for word, tf_val, idf_val, tfidf in matching_words[:5]:
                     print(f"     '{word}': TF={tf_val:.4f}, IDF={idf_val:.4f}, TF-IDF={tfidf:.4f}")
             
-            # Store top result for each query in summary table
             if rank == 1:
-                top_terms = ", ".join([word for word, _, _, _ in matching_words[:3]]) if matching_words else "None"
+                top_terms = ", ".join([w for w, _, _, _ in matching_words[:3]]) if matching_words else "None"
                 all_results.append((rank, doc_name, query, score, top_terms))
-    
+
+    # Summary Statistics
     print("\n" + "=" * 100)
     print(f"⏱️  Total query processing time: {total_query_time:.2f} seconds")
-    print(f"⏱️  Average time per query: {total_query_time/len(queries):.2f} seconds")
     
-    # Display summary table with top results
     print_table_header()
     for result in all_results:
         print_table_row(*result)
     print("=" * 110)
     
-    # Overall statistics
-    print(f"\n📈 ANALYSIS STATISTICS")
-    print(f"• Total Queries Processed: {len(queries)}")
-    print(f"• Total Documents Analyzed: {len(documents)}")
-    print(f"• CPU Cores Used: {num_processes}")
-    print(f"• Score Range: {min(r[3] for r in all_results):.4f} - {max(r[3] for r in all_results):.4f}")
-    print(f"• Best Match: {max(all_results, key=lambda x: x[3])[1]} (Score: {max(r[3] for r in all_results):.4f})")
-    
-    # Document performance summary
-    if dataset == 'sample':  # Only show full summary for small datasets
-        print_performance_table_header()
-        doc_counts = {}
-        for _, doc_name, _, score, _ in all_results:
-            if doc_name not in doc_counts:
-                doc_counts[doc_name] = {"count": 0, "total_score": 0}
-            doc_counts[doc_name]["count"] += 1
-            doc_counts[doc_name]["total_score"] += score
-        
-        # Sort by average score
-        doc_ranking = []
-        for doc_name, stats in doc_counts.items():
-            avg_score = stats["total_score"] / stats["count"]
-            doc_ranking.append((doc_name, stats["count"], avg_score))
-        
-        doc_ranking.sort(key=lambda x: x[2], reverse=True)
-        
-        for i, (doc_name, count, avg_score) in enumerate(doc_ranking, 1):
-            # Clean document name for display
-            doc_clean = doc_name.replace('.txt', '').replace('_', ' ').title()
-            doc_short = doc_clean[:42] + "..." if len(doc_clean) > 45 else doc_clean
-            rating = get_performance_rating(avg_score)
-            print(f"{i:<4} {doc_short:<45} {count:<6} {avg_score:<10.4f} {rating:<10}")
-        
-        print("=" * 80)
-    
     return True
 
 def main():
-    """
-    Main function to execute TF-IDF analysis with parallel processing.
-    Handles command-line arguments and orchestrates the analysis workflow.
-    
-    Returns:
-        int: Exit code (0 for success, 1 for error)
-    """
-    # Parse command-line arguments
-    dataset = 'sample'  # Default to sample dataset
-    num_processes = None  # Auto-detect by default
-    sample_ratio = 1.0  # Use all data by default
+    # Parse arguments
+    dataset = 'sample'
+    num_processes = None
+    sample_ratio = 1.0
     
     if len(sys.argv) > 1:
         if sys.argv[1] in ['sample', 'full']:
             dataset = sys.argv[1]
-        else:
-            print("Usage: python run_analysis_parallel.py [sample|full] [num_processes] [sample_ratio]")
-            print("  sample: Run on 10-document sample dataset (default)")
-            print("  full:   Run on complete 17,901-document dataset")
-            print("  num_processes: Number of CPU cores to use (default: auto-detect)")
-            print("  sample_ratio: Fraction of data to process (0.0-1.0, default: 1.0)")
-            print()
-            print("Examples:")
-            print("  python run_analysis_parallel.py sample              # Use sample dataset")
-            print("  python run_analysis_parallel.py full                # Use full dataset")
-            print("  python run_analysis_parallel.py full 8              # Use 8 cores")
-            print("  python run_analysis_parallel.py full 8 0.5          # Use 8 cores, half data")
-            print("  python run_analysis_parallel.py full 8 0.125        # Use 8 cores, 1/8 data")
-            print("  python run_analysis_parallel.py full auto 0.25      # Auto cores, 1/4 data")
-            return 1
     
     if len(sys.argv) > 2:
         try:
-            num_processes = int(sys.argv[2])
-            if num_processes < 1:
-                print("❌ Error: Number of processes must be at least 1")
-                return 1
+            val = sys.argv[2]
+            if val.lower() != 'auto':
+                num_processes = int(val)
         except ValueError:
-            print("❌ Error: Number of processes must be an integer")
-            return 1
-    
+            pass
+            
     if len(sys.argv) > 3:
         try:
             sample_ratio = float(sys.argv[3])
-            if not 0.0 < sample_ratio <= 1.0:
-                print("❌ Error: Sample ratio must be between 0.0 and 1.0")
-                return 1
         except ValueError:
-            print("❌ Error: Sample ratio must be a number")
-            return 1
-    
-    # Detect available CPU cores
+            pass
+
     available_cores = cpu_count()
     if num_processes is None:
         num_processes = available_cores
-    
+
     print("="*80)
-    print("📊 TF-IDF ALGORITHM DEMONSTRATION (PARALLEL PROCESSING)")
-    print(f"Dataset: {'20 Newsgroups Sample (10 docs)' if dataset == 'sample' else '20 Newsgroups Full (17,901 docs)'}")
+    print("📊 TF-IDF ALGORITHM - OPTIMIZED PARALLEL VERSION")
+    print(f"Dataset: {dataset}")
+    print(f"Cores: {num_processes}/{available_cores}")
     if sample_ratio < 1.0:
-        print(f"Sampling: {sample_ratio*100:.1f}% of data")
-    print(f"CPU Cores Available: {available_cores}")
-    print(f"CPU Cores Using: {num_processes}")
-    print("="*80)
-    print()
-    
-    # Check Python version
-    if sys.version_info < (3, 6):
-        print("❌ Error: Python 3.6 or higher is required")
-        print(f"Current version: {sys.version}")
-        return 1
-    
-    print(f"✅ Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro} detected")
-    print()
-    
-    # Display document collection information
-    if dataset == 'full':
-        documents_dir = 'dataset/newsgroups_full'
-    else:
-        documents_dir = 'dataset/newsgroups_sample'
-    
-    if not os.path.exists(documents_dir):
-        print(f"❌ Error: {documents_dir} directory not found")
-        return 1
-        
-    print(f"📚 Document Collection ({documents_dir}/):")
-    print("-" * 50)
-    
-    doc_count = 0
-    total_words = 0
-    
-    try:
-        # Count documents and calculate statistics
-        for filename in sorted(os.listdir(documents_dir)):
-            if filename.endswith('.txt'):
-                filepath = os.path.join(documents_dir, filename)
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    word_count = len(content.split())
-                    total_words += word_count
-                    doc_count += 1
-                    
-                    # Display document information (only first 10 for large datasets)
-                    if doc_count <= 10 or dataset == 'sample':
-                        title = content.split('\n')[0] if '\n' in content else content[:50]
-                        print(f"{doc_count}. {filename}")
-                        print(f"   Title: {title[:70]}...")
-                        print(f"   Size: {word_count:,} words, {len(content):,} characters")
-                        print()
-        
-        if doc_count > 10 and dataset == 'full':
-            print(f"... and {doc_count - 10} more documents")
-            print()
-            
-    except Exception as e:
-        print(f"❌ Error reading documents: {e}")
-        return 1
-    
-    if doc_count == 0:
-        print("❌ No text documents found in dataset/ directory")
-        return 1
-    
-    print(f"✅ Total Collection: {doc_count} documents, {total_words:,} words")
-    print()
-    
-    print("🔍 RUNNING TF-IDF ANALYSIS (PARALLEL PROCESSING)")
+        print(f"Sampling: {sample_ratio*100}%")
     print("="*80)
     
-    # Execute TF-IDF analysis on selected dataset with parallel processing
-    overall_start = time.time()
-    
     try:
-        success = run_tfidf_analysis(dataset=dataset, num_processes=num_processes, sample_ratio=sample_ratio)
-        if not success:
-            return 1
-            
+        run_tfidf_analysis(dataset, num_processes, sample_ratio)
+    except KeyboardInterrupt:
+        print("\n❌ Interrupted by user")
+        return 1
     except Exception as e:
-        print(f"❌ Error running analysis: {e}")
+        print(f"\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
         return 1
-    
-    overall_time = time.time() - overall_start
-    
-    print("="*80)
-    print("✅ ANALYSIS COMPLETE")
-    print(f"⏱️  Total execution time: {overall_time:.2f} seconds")
-    print(f"🔧 CPU cores utilized: {num_processes}/{available_cores}")
-    
-    if dataset == 'sample':
-        print("This demonstrates TF-IDF algorithm on 10 newsgroups sample documents")
-        print("covering Computer Graphics, Medical Science, Politics, Baseball, and Atheism.")
-    else:
-        print("This demonstrates TF-IDF algorithm on complete 20 Newsgroups dataset")
-        print("with 17,901 documents across 20 different categories.")
-        print(f"Performance: ~{doc_count/overall_time:.0f} documents processed per second")
-    print("="*80)
+        
     return 0
 
 if __name__ == "__main__":
-    exit_code = main()
-    sys.exit(exit_code)
+    sys.exit(main())
