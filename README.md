@@ -1,112 +1,155 @@
-# MHBG-1: MapReduce Algorithms Implementation
+# TF-IDF Algorithm Assignment
 
-This project implements two algorithms using Python's MRJob framework:
+## Overview
 
-## 🧹 **Project Cleanup**
+This project implements the **TF-IDF (Term Frequency-Inverse Document Frequency)** algorithm for document analysis and information retrieval. The implementation uses only Python standard library without any external dependencies.
 
-**⚠️ Important**: There are redundant files in the root directory that should be cleaned up.
+## 📋 What to Submit
 
-To remove duplicate files and get a clean project structure:
+Submit the entire **`tfidf`** folder to your instructor. This folder contains:
 
-```bash
-python3 cleanup.py
+```
+tfidf/
+├── run_analysis.py              # Main program (English comments)
+├── documents/
+│   ├── newsgroups_sample/       # 10 sample documents (required)
+│   └── newsgroups_full/         # 17,901 documents (optional)
+├── requirements.txt             # Empty (no dependencies needed)
+└── README.md                    # Instructions
 ```
 
-This will remove:
-- `tfidf.py` (duplicate - use `tfidf/tfidf.py`)
-- `shortest_path.py` (duplicate - use `shortest_path/shortest_path.py`) 
-- `doc*.txt` files (duplicates - use files in `tfidf/`)
-- `graph*.txt` files (duplicates - use files in `shortest_path/`)
-- `test.py` (replaced by `test_all.py`)
+## 🚀 How to Run
 
-## 📁 **Clean Project Structure**
+### Quick Start (Sample Dataset)
 
-After cleanup, the structure should be:
+```bash
+cd tfidf
+python3 run_analysis.py
+```
+
+**Execution time**: < 1 second  
+**Dataset**: 10 documents from newsgroups
+
+### Full Dataset Analysis
+
+```bash
+python3 run_analysis.py full
+```
+
+**Execution time**: ~30-60 seconds  
+**Dataset**: 17,901 documents from 20 Newsgroups
+
+### View Help
+
+```bash
+python3 run_analysis.py --help
+```
+
+## 💡 For Instructors
+
+To run this assignment after extraction:
+
+1. Extract the `tfidf` folder
+2. Open terminal and navigate to the folder:
+   ```bash
+   cd path/to/tfidf
+   ```
+3. Run the program:
+   ```bash
+   python3 run_analysis.py
+   ```
+
+**Requirements**:
+- Python 3.6 or higher
+- No external packages needed (uses standard library only)
+- Works on Windows, macOS, and Linux
+
+## 📊 What the Program Does
+
+The program demonstrates TF-IDF algorithm by:
+
+1. Loading documents from the dataset
+2. Calculating Term Frequency (TF) for each document
+3. Calculating Inverse Document Frequency (IDF) across all documents
+4. Computing TF-IDF scores for 8 test queries
+5. Ranking documents by relevance to each query
+6. Displaying detailed analysis results with statistics
+
+### Test Queries
+
+1. "computer graphics image display"
+2. "medical doctor patient health"
+3. "politics government election"
+4. "baseball game sport team"
+5. "religion atheism god belief"
+6. "science research study"
+7. "software program algorithm"
+8. "treatment disease clinical"
+
+## 📁 Project Structure
 
 ```
 MHBG-1/
-├── README.md              # Main project documentation
-├── requirements.txt       # Python dependencies
-├── test_all.py           # Master test script
-├── homework_1.pdf        # Original assignment
-├── tfidf/                # TF-IDF Algorithm
-│   ├── tfidf.py          # TF-IDF implementation
-│   ├── test_tfidf.py     # TF-IDF tests
-│   ├── README.md         # TF-IDF documentation
-│   └── doc*.txt          # Sample documents
-└── shortest_path/        # Shortest Path Algorithm
-    ├── shortest_path.py  # Shortest path implementation
-    ├── test_shortest_path.py # Tests
-    ├── README.md         # Documentation
-    └── graph*.txt        # Sample graphs
+├── README.md                    # This file
+├── homework_1.pdf              # Original assignment (optional)
+├── requirements.txt            # Empty (for compatibility)
+└── tfidf/                      # ⭐ SUBMIT THIS FOLDER
+    ├── run_analysis.py         # Main TF-IDF implementation
+    ├── README.md               # Detailed documentation
+    ├── requirements.txt        # No dependencies
+    └── documents/
+        ├── newsgroups_sample/  # 10 sample docs (21KB)
+        └── newsgroups_full/    # 17,901 docs (65MB, optional)
 ```
 
-## 🎯 Algorithms Implemented
+## 🎯 Algorithm Implementation
 
-### 1. TF-IDF Algorithm
-- **Purpose**: Rank documents by relevance to search query using TF-IDF scoring
-- **Location**: `/tfidf/` folder
-- **Grade Target**: 4 points (良)
+### TF-IDF Formula
 
-### 2. Shortest Path Algorithm
-- **Purpose**: Find shortest path in weighted graphs using MapReduce
-- **Location**: `/shortest_path/` folder
-- **Features**: Supports both positive and negative weights (bonus)
-
-## 🚀 Quick Start
-
-### Install Dependencies
-```bash
-pip install -r requirements.txt
+**Term Frequency (TF)**:
+```
+TF(term, document) = (Number of times term appears) / (Total terms in document)
 ```
 
-### Clean Up Project (First Time)
-```bash
-python3 cleanup.py
+**Inverse Document Frequency (IDF)**:
+```
+IDF(term) = log(Total documents / Documents containing term)
 ```
 
-### Run All Tests
-```bash
-python3 test_all.py
+**TF-IDF Score**:
+```
+TF-IDF = TF × IDF
 ```
 
-### Test Individual Algorithms
+### Core Functions
 
-#### TF-IDF
-```bash
-cd tfidf/
-python3 test_tfidf.py
-```
+- `clean_text()` - Tokenizes text into lowercase words
+- `calculate_tf()` - Computes term frequency for each word
+- `calculate_idf()` - Computes inverse document frequency
+- `search_documents()` - Ranks documents by TF-IDF relevance
+- `run_tfidf_analysis()` - Main analysis orchestration
 
-#### Shortest Path
-```bash
-cd shortest_path/
-python3 test_shortest_path.py
-```
+## 🔧 Technical Details
 
-## 📖 Detailed Usage
+- **Language**: Python 3.6+
+- **Dependencies**: None (standard library only)
+- **Code Style**: All comments in English
+- **Dataset**: 20 Newsgroups (classic ML dataset)
+- **Performance**: 
+  - Sample: <1 second for 10 documents
+  - Full: ~30-60 seconds for 17,901 documents
 
-### TF-IDF Algorithm
-```bash
-cd tfidf/
-python3 tfidf.py --query "search terms" --input-dir "." input_file.txt
-```
+## 📖 Documentation
 
-### Shortest Path Algorithm
-```bash
-cd shortest_path/
-# Positive weights
-python3 shortest_path.py --source A --target F graph.txt
+Detailed documentation is available in:
+- `/tfidf/README.md` - Complete usage guide
+- Inline code comments - Algorithm explanation
 
-# Negative weights (bonus feature)
-python3 shortest_path.py --source A --target F --allow-negative graph_negative.txt
-```
+## 👤 Author
 
-## 🔧 Requirements
+Student Assignment Submission  
+Date: November 2025
 
-- Python 3.x
-- mrjob library
+---
 
-## 📚 Documentation
-
-Each algorithm folder contains its own README.md with detailed documentation and usage examples.
+**Note**: This is an academic assignment. The implementation focuses on clarity and educational value while maintaining professional code quality.

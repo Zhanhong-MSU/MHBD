@@ -1,1 +1,1 @@
-mrjob>=0.7.4
+# TF-IDF Algorithm - No external dependencies required

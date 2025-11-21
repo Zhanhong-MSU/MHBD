@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
 TF-IDF Analysis - Complete Implementation
-Academic Paper Document Collection Analysis
-Standalone version with full TF-IDF algorithm implementation
-Works on any VPS with Python 3.6+
+Document Collection Analysis using TF-IDF Algorithm
+Standalone implementation with Python standard library only (Python 3.6+)
+
+Author: Student Submission
+Date: November 2025
 """
 
 import os
@@ -13,11 +15,28 @@ import math
 from collections import defaultdict, Counter
 
 def clean_text(text):
-    """Clean and tokenize text"""
+    """
+    Clean and tokenize text into words.
+    
+    Args:
+        text (str): Input text to be cleaned
+        
+    Returns:
+        list: List of lowercase words (alphabetic characters only)
+    """
     return re.findall(r'\b[a-zA-Z]+\b', text.lower())
 
 def calculate_tf(word_list):
-    """Calculate term frequency"""
+    """
+    Calculate Term Frequency (TF) for each word in the document.
+    TF = (Number of times term appears in document) / (Total number of terms in document)
+    
+    Args:
+        word_list (list): List of words in the document
+        
+    Returns:
+        dict: Dictionary mapping each word to its TF value
+    """
     word_count = len(word_list)
     tf_dict = {}
     counter = Counter(word_list)
@@ -28,7 +47,16 @@ def calculate_tf(word_list):
     return tf_dict
 
 def calculate_idf(documents):
-    """Calculate inverse document frequency"""
+    """
+    Calculate Inverse Document Frequency (IDF) for all words across documents.
+    IDF = log(Total number of documents / Number of documents containing the term)
+    
+    Args:
+        documents (list): List of tokenized documents (each document is a list of words)
+        
+    Returns:
+        dict: Dictionary mapping each word to its IDF value
+    """
     total_docs = len(documents)
     idf_dict = {}
     all_words = set(word for doc in documents for word in doc)
@@ -40,15 +68,24 @@ def calculate_idf(documents):
     return idf_dict
 
 def print_table_header():
-    """Print a formatted table header"""
+    """Print formatted table header for query results summary."""
     print("\n📊 QUERY RESULTS SUMMARY TABLE")
     print("=" * 110)
     print(f"{'Rank':<4} {'Document':<40} {'Query':<35} {'Score':<8} {'Key Terms':<18}")
     print("=" * 110)
 
 def print_table_row(rank, doc_name, query, score, top_terms):
-    """Print a formatted table row"""
-    # Clean document name (remove .txt extension and shorten)
+    """
+    Print a formatted table row with query results.
+    
+    Args:
+        rank (int): Result ranking position
+        doc_name (str): Document filename
+        query (str): Query string
+        score (float): TF-IDF relevance score
+        top_terms (str): Top matching terms
+    """
+    # Clean document name (remove .txt extension and shorten for display)
     doc_clean = doc_name.replace('.txt', '').replace('_', ' ').title()
     doc_short = doc_clean[:37] + "..." if len(doc_clean) > 40 else doc_clean
     
@@ -59,14 +96,22 @@ def print_table_row(rank, doc_name, query, score, top_terms):
     print(f"{rank:<4} {doc_short:<40} {query_short:<35} {score:<8.4f} {top_terms_short:<18}")
 
 def print_performance_table_header():
-    """Print document performance table header"""
+    """Print formatted table header for document performance summary."""
     print(f"\n🏆 DOCUMENT PERFORMANCE SUMMARY")
     print("=" * 80)
     print(f"{'Rank':<4} {'Document':<45} {'Wins':<6} {'Avg Score':<10} {'Rating':<10}")
     print("=" * 80)
 
 def get_performance_rating(avg_score):
-    """Get performance rating based on average score"""
+    """
+    Calculate star rating based on average TF-IDF score.
+    
+    Args:
+        avg_score (float): Average TF-IDF score for a document
+        
+    Returns:
+        str: Star rating (⭐ to ⭐⭐⭐⭐⭐)
+    """
     if avg_score >= 0.020:
         return "⭐⭐⭐⭐⭐"
     elif avg_score >= 0.015:
@@ -79,8 +124,19 @@ def get_performance_rating(avg_score):
         return "⭐"
 
 def search_documents(documents, query, doc_names):
-    """Search documents using TF-IDF"""
-    # Prepare documents
+    """
+    Search and rank documents using TF-IDF algorithm.
+    
+    Args:
+        documents (list): List of document contents (strings)
+        query (str): Search query string
+        doc_names (list): List of document filenames
+        
+    Returns:
+        list: Sorted list of tuples (doc_name, score, matching_words)
+              where matching_words contains (word, tf, idf, tfidf) tuples
+    """
+    # Tokenize all documents
     doc_words = []
     for doc_content in documents:
         words = clean_text(doc_content)
@@ -117,12 +173,25 @@ def search_documents(documents, query, doc_names):
     doc_scores.sort(key=lambda x: x[1], reverse=True)
     return doc_scores
 
-def run_tfidf_analysis():
-    """Run the TF-IDF analysis on documents"""
-    # Read documents from documents directory
+def run_tfidf_analysis(dataset='sample'):
+    """
+    Execute TF-IDF analysis on document collection.
+    
+    Args:
+        dataset (str): Dataset to analyze - 'sample' (10 docs) or 'full' (17,901 docs)
+        
+    Returns:
+        bool: True if analysis completed successfully, False otherwise
+    """
+    # Initialize document storage
     documents = []
     doc_names = []
-    documents_dir = 'documents'
+    
+    # Choose dataset directory based on parameter
+    if dataset == 'full':
+        documents_dir = 'documents/newsgroups_full'
+    else:
+        documents_dir = 'documents/newsgroups_sample'
     
     if not os.path.exists(documents_dir):
         print(f"❌ Error: {documents_dir} directory not found")
@@ -149,54 +218,66 @@ def run_tfidf_analysis():
     print("📊 TF-IDF Algorithm Results")
     print("=" * 100)
     
-    # Quick overview table
+    # Display document overview table
     print("\n📋 DOCUMENT OVERVIEW")
     print("-" * 80)
     print(f"{'#':<3} {'Document':<40} {'Size':<12} {'Topic':<25}")
     print("-" * 80)
     
+    # Topic mapping for document categorization
     topics = {
         "paper1_machine_learning.txt": "Healthcare ML",
         "paper2_deep_learning.txt": "NLP & Deep Learning", 
         "paper3_data_science.txt": "Business Analytics",
         "paper4_artificial_intelligence.txt": "AI Ethics",
-        "paper5_computer_vision.txt": "Computer Vision & Robotics"
+        "paper5_computer_vision.txt": "Computer Vision & Robotics",
+        # 20 Newsgroups dataset categories
+        "doc1_comp_graphics.txt": "Computer Graphics",
+        "doc2_comp_graphics.txt": "Computer Graphics",
+        "doc3_sci_med.txt": "Medical Science",
+        "doc4_talk_politics_misc.txt": "Politics",
+        "doc5_sci_med.txt": "Medical Science",
+        "doc6_talk_politics_misc.txt": "Politics",
+        "doc7_alt_atheism.txt": "Religion/Atheism",
+        "doc8_sci_med.txt": "Medical Science",
+        "doc9_comp_graphics.txt": "Computer Graphics",
+        "doc10_rec_sport_baseball.txt": "Sports/Baseball"
     }
     
     for i, (name, content) in enumerate(zip(doc_names, documents), 1):
         word_count = len(content.split())
         doc_clean = name.replace('.txt', '').replace('_', ' ').title()
         doc_short = doc_clean[:37] + "..." if len(doc_clean) > 40 else doc_clean
-        topic = topics.get(name, "Unknown")
+        topic = topics.get(name, "General")
         print(f"{i:<3} {doc_short:<40} {word_count:>4} words   {topic:<25}")
     
     print("-" * 80)
     print()
     
-    # Display document summary for detailed view
+    # Display preview of document contents
     print(f"📄 Document Content Preview:")
     for i, (name, content) in enumerate(zip(doc_names, documents), 1):
-        # Show first 80 characters of each document for better table formatting
+        # Display first 80 characters of each document
         preview = content[:80] + "..." if len(content) > 80 else content
         print(f"{i}. {name}: {preview}")
     print()
     
-    # Test queries relevant to the academic papers
+    # Define test queries for newsgroups dataset
     queries = [
-        "machine learning healthcare",
-        "deep learning natural language",
-        "data science business analytics", 
-        "artificial intelligence ethics",
-        "computer vision autonomous systems",
-        "neural networks algorithms",
-        "predictive analytics",
-        "transformer models"
+        "computer graphics image display",
+        "medical doctor patient health",
+        "politics government election",
+        "baseball game sport team",
+        "religion atheism god belief",
+        "science research study",
+        "software program algorithm",
+        "treatment disease clinical"
     ]
     
-    # Store all results for summary table
+    # Store results for summary table
     all_results = []
     
-    # Run detailed analysis for each query
+    # Execute TF-IDF analysis for each query
     print("🔍 DETAILED QUERY ANALYSIS")
     print("=" * 100)
     
@@ -216,14 +297,14 @@ def run_tfidf_analysis():
             else:
                 print("   (No matching terms found)")
             
-            # Store for summary table (only top result per query)
+            # Store top result for each query in summary table
             if rank == 1:
                 top_terms = ", ".join([word for word, _, _, _ in matching_words[:3]]) if matching_words else "None"
                 all_results.append((rank, doc_name, query, score, top_terms))
     
     print("\n" + "=" * 100)
     
-    # Print summary table
+    # Display summary table with top results
     print_table_header()
     for result in all_results:
         print_table_row(*result)
@@ -265,9 +346,27 @@ def run_tfidf_analysis():
     return True
 
 def main():
+    """
+    Main function to execute TF-IDF analysis.
+    Handles command-line arguments and orchestrates the analysis workflow.
+    
+    Returns:
+        int: Exit code (0 for success, 1 for error)
+    """
+    # Parse command-line arguments
+    dataset = 'sample'  # Default to sample dataset
+    if len(sys.argv) > 1:
+        if sys.argv[1] in ['sample', 'full']:
+            dataset = sys.argv[1]
+        else:
+            print("Usage: python run_analysis.py [sample|full]")
+            print("  sample: Run on 10-document sample dataset (default)")
+            print("  full:   Run on complete 17,901-document dataset")
+            return 1
+    
     print("="*80)
     print("📊 TF-IDF ALGORITHM DEMONSTRATION")
-    print("Academic Paper Document Collection Analysis")
+    print(f"Dataset: {'20 Newsgroups Sample (10 docs)' if dataset == 'sample' else '20 Newsgroups Full (17,901 docs)'}")
     print("="*80)
     print()
     
@@ -280,8 +379,12 @@ def main():
     print(f"✅ Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro} detected")
     print()
     
-    # Show document collection
-    documents_dir = 'documents'
+    # Display document collection information
+    if dataset == 'full':
+        documents_dir = 'documents/newsgroups_full'
+    else:
+        documents_dir = 'documents/newsgroups_sample'
+    
     if not os.path.exists(documents_dir):
         print(f"❌ Error: {documents_dir} directory not found")
         return 1
@@ -293,6 +396,7 @@ def main():
     total_words = 0
     
     try:
+        # Count documents and calculate statistics
         for filename in sorted(os.listdir(documents_dir)):
             if filename.endswith('.txt'):
                 filepath = os.path.join(documents_dir, filename)
@@ -302,7 +406,7 @@ def main():
                     total_words += word_count
                     doc_count += 1
                     
-                    # Extract title (first line)
+                    # Display document information (title from first line)
                     title = content.split('\n')[0]
                     print(f"{doc_count}. {filename}")
                     print(f"   Title: {title}")
@@ -322,21 +426,26 @@ def main():
     print("🔍 RUNNING TF-IDF ANALYSIS")
     print("="*80)
     
-    # Run TF-IDF analysis
+    # Execute TF-IDF analysis on selected dataset
     try:
-        success = run_tfidf_analysis()
+        success = run_tfidf_analysis(dataset=dataset)
         if not success:
             return 1
             
     except Exception as e:
         print(f"❌ Error running analysis: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
     
     print("="*80)
     print("✅ ANALYSIS COMPLETE")
-    print("This demonstrates TF-IDF algorithm performance on academic papers")
-    print("covering Machine Learning, Deep Learning, Data Science, AI Ethics,")
-    print("and Computer Vision topics.")
+    if dataset == 'sample':
+        print("This demonstrates TF-IDF algorithm on 10 newsgroups sample documents")
+        print("covering Computer Graphics, Medical Science, Politics, Baseball, and Atheism.")
+    else:
+        print("This demonstrates TF-IDF algorithm on complete 20 Newsgroups dataset")
+        print("with 17,901 documents across 20 different categories.")
     print("="*80)
     return 0
 
