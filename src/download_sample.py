@@ -2,26 +2,26 @@ import urllib.request
 import os
 
 def download_sample():
-    # 获取项目根目录 (src 的上一级)
+    # Get project root directory (parent of src)
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     dataset_dir = os.path.join(project_root, "dataset")
     
-    # 确保 dataset 目录存在
+    # Ensure dataset directory exists
     if not os.path.exists(dataset_dir):
         os.makedirs(dataset_dir)
 
-    # 使用 picsum.photos 获取一张 4K (3840x2160) 的随机图片
-    # 改为 4K 分辨率以测试多进程性能
-    url = "https://picsum.photos/3840/2160"
+    # Use picsum.photos to get a random 300x300 image
+    # This size is suitable for local MapReduce testing (visible effect, reasonable runtime)
+    url = "https://picsum.photos/300/300"
     save_path = os.path.join(dataset_dir, "source_image.jpg")
 
-    print(f"正在从 {url} 下载测试图片...")
+    print(f"Downloading sample image from {url}...")
     try:
         urllib.request.urlretrieve(url, save_path)
-        print(f"下载成功！图片已保存为: {save_path}")
-        print("现在您可以运行 'python src/driver.py' 来测试了。")
+        print(f"Download successful! Image saved to: {save_path}")
+        print("You can now run 'python3 main.py' to test.")
     except Exception as e:
-        print(f"下载失败: {e}")
+        print(f"Download failed: {e}")
 
 if __name__ == "__main__":
     download_sample()
