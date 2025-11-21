@@ -10,9 +10,9 @@ def download_sample():
     if not os.path.exists(dataset_dir):
         os.makedirs(dataset_dir)
 
-    # 使用 picsum.photos 获取一张 300x300 的随机图片
-    # 这个尺寸对于 MapReduce 本地测试来说非常合适（既能看清效果，又不会跑太久）
-    url = "https://picsum.photos/300/300"
+    # 使用 picsum.photos 获取一张 4K (3840x2160) 的随机图片
+    # 改为 4K 分辨率以测试多进程性能
+    url = "https://picsum.photos/3840/2160"
     save_path = os.path.join(dataset_dir, "source_image.jpg")
 
     print(f"正在从 {url} 下载测试图片...")

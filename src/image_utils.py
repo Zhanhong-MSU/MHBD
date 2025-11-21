@@ -3,17 +3,15 @@ import numpy as np
 import os
 from src.math_utils import manhattan_distance
 
-def image_to_pixels(image_path, output_text_path):
+def load_image_as_array(image_path):
     """
-    Reads an image and converts it to a text file where each line is:
-    row_id, col_id, R, G, B
+    Reads an image and returns it as a flat numpy array of pixels.
     
     Args:
         image_path (str): Path to the source image.
-        output_text_path (str): Path to save the pixel data.
         
     Returns:
-        tuple: (width, height) of the image.
+        tuple: (pixels_array, width, height)
     """
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image file not found: {image_path}")
@@ -21,52 +19,39 @@ def image_to_pixels(image_path, output_text_path):
     img = Image.open(image_path)
     img = img.convert('RGB')
     width, height = img.size
-    pixels = np.array(img)
+    # Convert to numpy array and reshape to (N, 3)
+    pixels = np.array(img).reshape(-1, 3)
+    
+    print(f"Loaded image {image_path}. Size: {width}x{height} ({len(pixels)} pixels)")
+    return pixels, width, height
 
-    with open(output_text_path, 'w') as f:
-        for r in range(height):
-            for c in range(width):
-                R, G, B = pixels[r, c]
-                f.write(f"{r},{c},{R},{G},{B}\n")
-    
-    print(f"Converted image {image_path} to text {output_text_path}. Size: {width}x{height}")
-    return width, height
-
-def reconstruct_image(pixels_path, centroids, width, height, output_image_path):
+def reconstruct_image_from_array(pixels, centroids, width, height, output_image_path):
     """
-    Reconstructs the image using the final centroids.
-    Each pixel is replaced by the color of its nearest centroid.
-    
-    Args:
-        pixels_path (str): Path to the pixel text file.
-        centroids (list): List of final centroids (each is [R, G, B]).
-        width (int): Image width.
-        height (int): Image height.
-        output_image_path (str): Path to save the result image.
+    Reconstructs the image using the final centroids (in-memory version).
     """
-    # Create a blank image array
-    new_pixels = np.zeros((height, width, 3), dtype=np.uint8)
-    
     print("Reconstructing image...")
-    with open(pixels_path, 'r') as f:
-        for line in f:
-            parts = list(map(int, line.strip().split(',')))
-            r_idx, c_idx = parts[0], parts[1]
-            pixel_rgb = parts[2:]
-            
-            # Find nearest centroid
-            min_dist = float('inf')
-            nearest_centroid = None
-            
-            for centroid in centroids:
-                dist = manhattan_distance(pixel_rgb, centroid)
-                if dist < min_dist:
-                    min_dist = dist
-                    nearest_centroid = centroid
-            
-            new_pixels[r_idx, c_idx] = nearest_centroid
-
-    img = Image.fromarray(new_pixels)
+    
+    # We need to assign each pixel to its nearest centroid one last time
+    # Optimization: We can do this in parallel too, but for simplicity let's do it here
+    # or use a simple loop. For 4K image, this might take a moment.
+    
+    new_pixels = np.zeros_like(pixels)
+    
+    for i, pixel in enumerate(pixels):
+        min_dist = float('inf')
+        nearest_centroid = None
+        
+        for centroid in centroids:
+            dist = np.sum(np.abs(pixel - centroid)) # Manhattan
+            if dist < min_dist:
+                min_dist = dist
+                nearest_centroid = centroid
+        
+        new_pixels[i] = nearest_centroid
+        
+    # Reshape back to image dimensions
+    img_array = new_pixels.reshape(height, width, 3).astype(np.uint8)
+    img = Image.fromarray(img_array)
     img.save(output_image_path)
     print(f"Saved reconstructed image to {output_image_path}")
 
