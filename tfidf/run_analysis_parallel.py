@@ -249,13 +249,15 @@ def search_documents(documents, query, doc_names, num_processes=None):
     doc_scores.sort(key=lambda x: x[1], reverse=True)
     return doc_scores
 
-def run_tfidf_analysis(dataset='sample', num_processes=None):
+def run_tfidf_analysis(dataset='sample', num_processes=None, sample_ratio=1.0):
     """
     Execute TF-IDF analysis on document collection with parallel processing.
     
     Args:
         dataset (str): Dataset to analyze - 'sample' (10 docs) or 'full' (17,901 docs)
         num_processes (int): Number of processes to use (default: auto-detect CPU cores)
+        sample_ratio (float): Ratio of documents to process (0.0-1.0). 
+                             E.g., 0.5 = half, 0.25 = quarter, 0.125 = 1/8
         
     Returns:
         bool: True if analysis completed successfully, False otherwise
@@ -282,18 +284,31 @@ def run_tfidf_analysis(dataset='sample', num_processes=None):
     print(f"📂 Loading documents from {documents_dir}...")
     start_time = time.time()
     
+    all_filenames = []
     for filename in sorted(os.listdir(documents_dir)):
         if filename.endswith('.txt'):
-            filepath = os.path.join(documents_dir, filename)
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    content = f.read().strip()
-                    if content:  # Only add non-empty files
-                        doc_names.append(filename)
-                        documents.append(content)
-            except Exception as e:
-                print(f"❌ Error reading {filename}: {e}")
-                return False
+            all_filenames.append(filename)
+    
+    # Apply sampling if ratio < 1.0
+    if sample_ratio < 1.0:
+        import random
+        random.seed(42)  # Fixed seed for reproducibility
+        num_to_sample = max(1, int(len(all_filenames) * sample_ratio))
+        all_filenames = random.sample(all_filenames, num_to_sample)
+        all_filenames.sort()  # Keep sorted for consistent output
+        print(f"📊 Sampling {sample_ratio*100:.1f}% of data: {len(all_filenames)} documents selected")
+    
+    for filename in all_filenames:
+        filepath = os.path.join(documents_dir, filename)
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content:  # Only add non-empty files
+                    doc_names.append(filename)
+                    documents.append(content)
+        except Exception as e:
+            print(f"❌ Error reading {filename}: {e}")
+            return False
     
     load_time = time.time() - start_time
     print(f"✅ Loaded {len(documents)} documents in {load_time:.2f} seconds")
@@ -459,20 +474,25 @@ def main():
     # Parse command-line arguments
     dataset = 'sample'  # Default to sample dataset
     num_processes = None  # Auto-detect by default
+    sample_ratio = 1.0  # Use all data by default
     
     if len(sys.argv) > 1:
         if sys.argv[1] in ['sample', 'full']:
             dataset = sys.argv[1]
         else:
-            print("Usage: python run_analysis_parallel.py [sample|full] [num_processes]")
+            print("Usage: python run_analysis_parallel.py [sample|full] [num_processes] [sample_ratio]")
             print("  sample: Run on 10-document sample dataset (default)")
             print("  full:   Run on complete 17,901-document dataset")
             print("  num_processes: Number of CPU cores to use (default: auto-detect)")
+            print("  sample_ratio: Fraction of data to process (0.0-1.0, default: 1.0)")
             print()
             print("Examples:")
-            print("  python run_analysis_parallel.py sample      # Use sample dataset, auto-detect cores")
-            print("  python run_analysis_parallel.py full 4      # Use full dataset with 4 cores")
-            print("  python run_analysis_parallel.py full        # Use full dataset, auto-detect cores")
+            print("  python run_analysis_parallel.py sample              # Use sample dataset")
+            print("  python run_analysis_parallel.py full                # Use full dataset")
+            print("  python run_analysis_parallel.py full 8              # Use 8 cores")
+            print("  python run_analysis_parallel.py full 8 0.5          # Use 8 cores, half data")
+            print("  python run_analysis_parallel.py full 8 0.125        # Use 8 cores, 1/8 data")
+            print("  python run_analysis_parallel.py full auto 0.25      # Auto cores, 1/4 data")
             return 1
     
     if len(sys.argv) > 2:
@@ -485,6 +505,16 @@ def main():
             print("❌ Error: Number of processes must be an integer")
             return 1
     
+    if len(sys.argv) > 3:
+        try:
+            sample_ratio = float(sys.argv[3])
+            if not 0.0 < sample_ratio <= 1.0:
+                print("❌ Error: Sample ratio must be between 0.0 and 1.0")
+                return 1
+        except ValueError:
+            print("❌ Error: Sample ratio must be a number")
+            return 1
+    
     # Detect available CPU cores
     available_cores = cpu_count()
     if num_processes is None:
@@ -493,6 +523,8 @@ def main():
     print("="*80)
     print("📊 TF-IDF ALGORITHM DEMONSTRATION (PARALLEL PROCESSING)")
     print(f"Dataset: {'20 Newsgroups Sample (10 docs)' if dataset == 'sample' else '20 Newsgroups Full (17,901 docs)'}")
+    if sample_ratio < 1.0:
+        print(f"Sampling: {sample_ratio*100:.1f}% of data")
     print(f"CPU Cores Available: {available_cores}")
     print(f"CPU Cores Using: {num_processes}")
     print("="*80)
@@ -564,7 +596,7 @@ def main():
     overall_start = time.time()
     
     try:
-        success = run_tfidf_analysis(dataset=dataset, num_processes=num_processes)
+        success = run_tfidf_analysis(dataset=dataset, num_processes=num_processes, sample_ratio=sample_ratio)
         if not success:
             return 1
             
