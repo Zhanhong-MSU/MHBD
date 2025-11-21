@@ -20,29 +20,61 @@ tfidf/
 
 ## 🚀 How to Run
 
-### Quick Start (Sample Dataset)
+### Quick Start - Single-threaded Version
 
+**Sample Dataset (10 documents)**
 ```bash
 cd tfidf
 python3 run_analysis.py
 ```
-
 **Execution time**: < 1 second  
 **Dataset**: 10 documents from newsgroups
 
-### Full Dataset Analysis
-
+**Full Dataset (17,901 documents)**
 ```bash
 python3 run_analysis.py full
 ```
-
 **Execution time**: ~30-60 seconds  
 **Dataset**: 17,901 documents from 20 Newsgroups
+
+### Quick Start - Multi-process Parallel Version (⚡ Faster!)
+
+**Sample Dataset with auto-detected CPU cores**
+```bash
+cd tfidf
+python3 run_analysis_parallel.py
+```
+**Execution time**: < 1 second
+
+**Full Dataset with auto-detected CPU cores**
+```bash
+python3 run_analysis_parallel.py full
+```
+**Execution time**: ~10-20 seconds (3-5x faster!)  
+**Features**: 
+- Automatically detects and uses all CPU cores
+- Parallel document processing
+- Real-time progress tracking
+
+**Specify CPU cores manually**
+```bash
+python3 run_analysis_parallel.py full 4    # Use 4 cores
+python3 run_analysis_parallel.py full 8    # Use 8 cores
+```
+
+### Performance Benchmark
+
+Compare single-threaded vs parallel performance:
+```bash
+cd tfidf
+python3 tests/benchmark_parallel.py full
+```
 
 ### View Help
 
 ```bash
 python3 run_analysis.py --help
+python3 run_analysis_parallel.py --help
 ```
 
 ## 💡 For Instructors
@@ -93,12 +125,35 @@ MHBG-1/                              # Project root
 ├── README.md                        # This file (project overview)
 ├── homework_1.pdf                  # Original assignment (optional)
 └── tfidf/                          # ⭐ SUBMIT THIS FOLDER
-    ├── run_analysis.py             # Main TF-IDF program
+    ├── run_analysis.py             # Main TF-IDF program (single-threaded)
+    ├── run_analysis_parallel.py    # Main TF-IDF program (multi-process, faster)
     ├── README.md                   # Usage instructions
     ├── requirements.txt            # No dependencies (standard library only)
     ├── documents/                  # Dataset folder
     │   ├── newsgroups_sample/      # 10 sample docs (required)
     │   └── newsgroups_full/        # 17,901 docs (optional)
+    ├── scripts/                    # Utility scripts (optional)
+    │   ├── README.md
+    │   └── download_full_newsgroups.py
+    └── tests/                      # Test files (optional)
+        ├── README.md
+        ├── benchmark_parallel.py   # Performance comparison tool
+        ├── test_both_datasets.py
+        └── test_optimized.py
+```
+
+### What to Submit
+
+**Core files (required)**:
+- `tfidf/run_analysis.py` - Single-threaded version (simpler)
+- OR `tfidf/run_analysis_parallel.py` - Parallel version (demonstrates optimization)
+- `tfidf/documents/newsgroups_sample/` - 10 sample documents
+- `tfidf/README.md` - Instructions
+
+**Optional files** (for reference):
+- `tfidf/scripts/` - Dataset download tools
+- `tfidf/tests/` - Performance testing and benchmark scripts
+- `tfidf/documents/newsgroups_full/` - Full 17,901 documents
     ├── scripts/                    # Utility scripts (optional)
     │   ├── README.md
     │   └── download_full_newsgroups.py

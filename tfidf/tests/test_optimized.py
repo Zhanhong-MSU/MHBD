@@ -261,14 +261,14 @@ def main():
     results = []
     
     # Test small dataset
-    sample_folder = "documents/newsgroups_sample"
+    sample_folder = "dataset/newsgroups_sample"
     if os.path.exists(sample_folder):
         r1 = run_optimized_test(sample_folder, queries, "Newsgroups Sample")
         if r1:
             results.append(r1)
     
     # Test full dataset
-    full_folder = "documents/newsgroups_full"
+    full_folder = "dataset/newsgroups_full"
     if os.path.exists(full_folder):
         r2 = run_optimized_test(full_folder, queries, "Newsgroups Full")
         if r2:

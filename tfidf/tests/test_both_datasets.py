@@ -196,14 +196,14 @@ def main():
     results = []
     
     # Test 1: Small sample dataset (10 documents)
-    sample_folder = "documents/newsgroups_sample"
+    sample_folder = "dataset/newsgroups_sample"
     if os.path.exists(sample_folder):
         result1 = run_tfidf_analysis(sample_folder, queries, "Newsgroups Sample (10 docs)")
         if result1:
             results.append(result1)
     
     # Test 2: Full dataset (18,846 documents)
-    full_folder = "documents/newsgroups_full"
+    full_folder = "dataset/newsgroups_full"
     if os.path.exists(full_folder):
         result2 = run_tfidf_analysis(full_folder, queries, "Newsgroups Full (18K+ docs)")
         if result2:

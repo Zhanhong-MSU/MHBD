@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Download complete 20 Newsgroups dataset (approximately 20,000 articles)
-and save to documents/newsgroups_full/ folder
+and save to dataset/newsgroups_full/ folder
 """
 
 import os
@@ -40,7 +40,7 @@ def download_and_save_newsgroups():
     print(f"\nCategories: {', '.join(categories)}\n")
     
     # Create output directory
-    output_dir = "documents/newsgroups_full"
+    output_dir = "dataset/newsgroups_full"
     os.makedirs(output_dir, exist_ok=True)
     
     # Statistics
