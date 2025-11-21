@@ -114,6 +114,11 @@ def main():
     
     # 4. Post-processing
     print("Step 4: Reconstructing image...")
+    # Ensure output directory exists
+    output_dir = os.path.dirname(OUTPUT_IMAGE)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
     reconstruct_image(PIXELS_FILE, current_centroids, width, height, OUTPUT_IMAGE)
     print("Done!")
 
