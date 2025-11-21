@@ -38,7 +38,9 @@ python3 run_analysis.py
 **Execution time**: < 1 second
 
 **Full Dataset (17,901 documents)**
+*Note: You must download the dataset first.*
 ```bash
+python3 manage_dataset.py download
 python3 run_analysis.py full
 ```
 **Execution time**: ~30-60 seconds
@@ -53,7 +55,9 @@ python3 run_analysis_parallel.py
 **Execution time**: < 1 second
 
 **Full Dataset with auto-detected CPU cores**
+*Note: You must download the dataset first.*
 ```bash
+python3 manage_dataset.py download
 python3 run_analysis_parallel.py full
 ```
 **Execution time**: ~10-20 seconds (3-5x faster!)
@@ -306,11 +310,6 @@ To run this assignment after extraction:
 - [`tfidf/docs/CPU_OPTIMIZATION.md`](tfidf/docs/CPU_OPTIMIZATION.md) - Multi-core optimization guide
 - [`tfidf/scripts/README.md`](tfidf/scripts/README.md) - Utility scripts documentation
 - [`tfidf/tests/README.md`](tfidf/tests/README.md) - Testing and benchmarking guide
-
-## 👤 Author
-
-Student Assignment Submission  
-Date: November 2025
 
 ---
 
