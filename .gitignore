@@ -23,3 +23,6 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+# 中文演讲文档
+REPORT_CN_RU.md
